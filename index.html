@@ -26,6 +26,7 @@
         
         .header {
             padding: 15px 0;
+            flex-shrink: 0;
         }
         
         h1 {
@@ -34,15 +35,15 @@
             padding: 0 10px;
         }
         
-        .timer-container {
+        .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             padding: 10px;
             width: 100%;
             max-width: 500px;
             margin: 0 auto;
+            overflow: hidden;
         }
         
         .timer-display {
@@ -50,6 +51,7 @@
             margin: 10px 0;
             font-weight: bold;
             letter-spacing: 2px;
+            flex-shrink: 0;
         }
         
         .progress-container {
@@ -59,6 +61,7 @@
             margin: 15px 0;
             border-radius: 15px;
             overflow: hidden;
+            flex-shrink: 0;
         }
         
         .progress {
@@ -74,6 +77,7 @@
             gap: 12px;
             margin-bottom: 15px;
             width: 100%;
+            flex-shrink: 0;
         }
         
         button {
@@ -119,24 +123,31 @@
             transform: scale(0.96);
         }
         
-        .history {
-            margin-top: 10px;
-            padding: 10px;
-            border-top: 1px solid #333;
-            max-height: 30vh;
-            overflow-y: auto;
+        .history-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             width: 100%;
-            -webkit-overflow-scrolling: touch;
+            border-top: 1px solid #333;
+            overflow: hidden;
         }
         
-        .history h2 {
+        .history-header {
+            padding: 10px;
             font-size: clamp(1.2rem, 5vw, 1.5rem);
-            margin: 5px 0 10px;
+            flex-shrink: 0;
+        }
+        
+        .history {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 10px 10px;
         }
         
         .history-item {
             margin: 8px 0;
-            padding: 8px 10px;
+            padding: 12px 15px;
             background-color: #222;
             border-radius: 8px;
             font-size: clamp(0.9rem, 3.5vw, 1rem);
@@ -169,7 +180,7 @@
         <h1>Breastfeeding Timer</h1>
     </div>
     
-    <div class="timer-container">
+    <div class="main-content">
         <div>
             <div class="timer-display" id="timer">15:00</div>
             <div class="progress-container">
@@ -184,9 +195,9 @@
             <button id="resetBtn">Reset</button>
         </div>
         
-        <div class="history">
-            <h2>Feeding History</h2>
-            <div id="historyList"></div>
+        <div class="history-container">
+            <div class="history-header">Feeding History</div>
+            <div class="history" id="historyList"></div>
         </div>
     </div>
 
