@@ -114,6 +114,13 @@
             grid-column: span 2;
         }
         
+        #exportBtn {
+            background-color: #9C27B0;
+            color: white;
+            grid-column: span 2;
+            margin-top: 10px;
+        }
+        
         button:disabled {
             opacity: 0.6;
             filter: saturate(0.5);
@@ -136,6 +143,9 @@
             padding: 10px;
             font-size: clamp(1.2rem, 5vw, 1.5rem);
             flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .history {
@@ -151,6 +161,7 @@
             background-color: #222;
             border-radius: 8px;
             font-size: clamp(0.9rem, 3.5vw, 1rem);
+            text-align: left;
         }
         
         .finished {
@@ -169,7 +180,7 @@
             .buttons {
                 grid-template-columns: 1fr 1fr 1fr 1fr;
             }
-            #pauseBtn, #resetBtn {
+            #pauseBtn, #resetBtn, #exportBtn {
                 grid-column: span 1;
             }
         }
@@ -193,10 +204,14 @@
             <button id="rightBtn">Right</button>
             <button id="pauseBtn" disabled>Pause</button>
             <button id="resetBtn">Reset</button>
+            <button id="exportBtn">Export History</button>
         </div>
         
         <div class="history-container">
-            <div class="history-header">Feeding History</div>
+            <div class="history-header">
+                <span>Feeding History</span>
+                <span id="historyCount">0 sessions</span>
+            </div>
             <div class="history" id="historyList"></div>
         </div>
     </div>
@@ -208,8 +223,10 @@
         const rightBtn = document.getElementById('rightBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const exportBtn = document.getElementById('exportBtn');
         const progressBar = document.getElementById('progress');
         const historyList = document.getElementById('historyList');
+        const historyCount = document.getElementById('historyCount');
         const body = document.body;
         
         // Timer variables
@@ -220,6 +237,7 @@
         let endTime;
         let isActive = false;
         let isPaused = false;
+        let historyEntries = [];
         
         // Format time as MM:SS
         function formatTime(seconds) {
@@ -329,19 +347,81 @@
         function addToHistory() {
             const duration = Math.round((endTime - startTime) / 1000);
             const durationFormatted = formatTime(duration);
+            const dateTime = startTime.toLocaleString([], {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
             
-            const historyItem = document.createElement('div');
-            historyItem.className = 'history-item';
-            historyItem.textContent = `${currentSide} side: ${durationFormatted} - ${startTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+            const entry = {
+                side: currentSide,
+                duration: durationFormatted,
+                dateTime: dateTime,
+                timestamp: startTime.getTime()
+            };
             
-            historyList.prepend(historyItem);
+            historyEntries.unshift(entry);
+            updateHistoryDisplay();
         }
         
-        // Event listeners with touch support
+        // Update history display
+        function updateHistoryDisplay() {
+            historyList.innerHTML = '';
+            historyCount.textContent = `${historyEntries.length} ${historyEntries.length === 1 ? 'session' : 'sessions'}`;
+            
+            historyEntries.forEach(entry => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.textContent = `${entry.side} side: ${entry.duration} - ${entry.dateTime}`;
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // Export history to file
+        function exportHistory() {
+            if (historyEntries.length === 0) {
+                alert('No history to export');
+                return;
+            }
+            
+            let exportText = 'Breastfeeding History\n\n';
+            exportText += 'Side\tDuration\tDate/Time\n';
+            exportText += '--------------------------------\n';
+            
+            historyEntries.forEach(entry => {
+                exportText += `${entry.side}\t${entry.duration}\t${entry.dateTime}\n`;
+            });
+            
+            const blob = new Blob([exportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `breastfeeding_history_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Load history from localStorage
+        function loadHistory() {
+            const savedHistory = localStorage.getItem('breastfeedingHistory');
+            if (savedHistory) {
+                historyEntries = JSON.parse(savedHistory);
+                updateHistoryDisplay();
+            }
+        }
+        
+        // Save history to localStorage
+        function saveHistory() {
+            localStorage.setItem('breastfeedingHistory', JSON.stringify(historyEntries));
+        }
+        
+        // Event listeners
         leftBtn.addEventListener('click', () => startTimer('Left'));
         rightBtn.addEventListener('click', () => startTimer('Right'));
         pauseBtn.addEventListener('click', togglePause);
         resetBtn.addEventListener('click', resetTimer);
+        exportBtn.addEventListener('click', exportHistory);
+        
+        // Save history when page is about to unload
+        window.addEventListener('beforeunload', saveHistory);
         
         // Prevent double-tap zoom on buttons
         document.addEventListener('dblclick', (e) => {
@@ -352,6 +432,7 @@
         
         // Initialize
         timerDisplay.textContent = formatTime(timeLeft);
+        loadHistory();
     </script>
 </body>
 </html>
