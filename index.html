@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Breastfeeding Timer</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="FeedTimer">
+    <meta name="theme-color" content="#4CAF50">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
     <style>
         * {
             box-sizing: border-box;
@@ -230,7 +236,7 @@
         const body = document.body;
         
         // Timer variables
-        let timeLeft = 15 * 60; // 15 minutes in seconds
+        let timeLeft = 15 * 60;
         let timer;
         let currentSide = '';
         let startTime;
@@ -240,12 +246,70 @@
         let historyEntries = [];
         let backgroundStartTime = 0;
         let backgroundTimeLeft = 0;
+        let notificationPermission = false;
+        let serviceWorkerRegistration;
+
+        // Check for notification support
+        const notificationSupported = 'Notification' in window;
         
         // Format time as MM:SS
         function formatTime(seconds) {
             const mins = Math.floor(seconds / 60);
             const secs = seconds % 60;
             return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Request notification permission
+        async function requestNotificationPermission() {
+            if (!notificationSupported) return false;
+            
+            try {
+                const permission = await Notification.requestPermission();
+                notificationPermission = permission === 'granted';
+                return notificationPermission;
+            } catch (err) {
+                console.error('Notification permission error:', err);
+                return false;
+            }
+        }
+        
+        // Show notification
+        function showNotification(title, options) {
+            if (!notificationPermission) return;
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification(title, options);
+                });
+            } else if (notificationSupported) {
+                new Notification(title, options);
+            }
+        }
+        
+        // Register service worker for push notifications
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) return;
+            
+            try {
+                serviceWorkerRegistration = await navigator.serviceWorker.register('sw.js');
+                console.log('Service Worker registered');
+            } catch (err) {
+                console.error('Service Worker registration failed:', err);
+            }
+        }
+        
+        // Request wake lock to prevent screen from turning off
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator && !isPaused) {
+                    const wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock was released');
+                    });
+                }
+            } catch (err) {
+                console.error('Error requesting wake lock:', err);
+            }
         }
         
         // Update timer display and progress bar
@@ -266,6 +330,15 @@
                 addToHistory();
                 pauseBtn.disabled = true;
                 pauseBtn.textContent = 'Pause';
+                
+                // Show notification when timer completes
+                if (document.visibilityState !== 'visible') {
+                    showNotification('Feeding Timer Complete', {
+                        body: `${currentSide} side feeding session is complete`,
+                        icon: 'icon-192x192.png',
+                        vibrate: [200, 100, 200]
+                    });
+                }
             }
             
             timeLeft = currentTimeLeft;
@@ -273,10 +346,8 @@
         
         // Start timer for a specific side
         function startTimer(side) {
-            // If same side button pressed while active, ignore
             if (isActive && currentSide === side) return;
             
-            // If different side button pressed while active, switch sides
             if (isActive && currentSide !== side) {
                 endTime = new Date();
                 addToHistory();
@@ -289,7 +360,6 @@
             body.classList.remove('finished');
             body.classList.remove('paused');
             
-            // Reset timer to 15 minutes
             timeLeft = 15 * 60;
             backgroundTimeLeft = timeLeft;
             backgroundStartTime = Date.now();
@@ -300,13 +370,11 @@
             clearInterval(timer);
             timer = setInterval(updateTimer, 1000);
             
-            // Update button states
             leftBtn.disabled = side === 'Left';
             rightBtn.disabled = side === 'Right';
             pauseBtn.disabled = false;
             pauseBtn.textContent = 'Pause';
             
-            // Request wake lock to prevent screen from turning off
             requestWakeLock();
         }
         
@@ -327,20 +395,6 @@
                 backgroundTimeLeft = timeLeft;
                 timer = setInterval(updateTimer, 1000);
                 requestWakeLock();
-            }
-        }
-        
-        // Request wake lock to prevent screen from turning off
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator && !isPaused) {
-                    const wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake Lock was released');
-                    });
-                }
-            } catch (err) {
-                console.error('Error requesting wake lock:', err);
             }
         }
         
@@ -395,6 +449,7 @@
             
             historyEntries.unshift(entry);
             updateHistoryDisplay();
+            saveHistory();
         }
         
         // Update history display
@@ -450,6 +505,23 @@
             localStorage.setItem('breastfeedingHistory', JSON.stringify(historyEntries));
         }
         
+        // Initialize the app
+        async function init() {
+            // Request notification permission
+            if (notificationSupported) {
+                notificationPermission = await requestNotificationPermission();
+            }
+            
+            // Register service worker
+            await registerServiceWorker();
+            
+            // Load history
+            loadHistory();
+            
+            // Set initial timer display
+            timerDisplay.textContent = formatTime(timeLeft);
+        }
+        
         // Event listeners
         leftBtn.addEventListener('click', () => startTimer('Left'));
         rightBtn.addEventListener('click', () => startTimer('Right'));
@@ -457,19 +529,8 @@
         resetBtn.addEventListener('click', resetTimer);
         exportBtn.addEventListener('click', exportHistory);
         
-        // Save history when page is about to unload
-        window.addEventListener('beforeunload', saveHistory);
-        
-        // Prevent double-tap zoom on buttons
-        document.addEventListener('dblclick', (e) => {
-            if (['BUTTON', 'A'].includes(e.target.tagName)) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        // Initialize
-        timerDisplay.textContent = formatTime(timeLeft);
-        loadHistory();
+        // Initialize the app
+        init();
     </script>
 </body>
 </html>
