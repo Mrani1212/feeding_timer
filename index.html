@@ -127,6 +127,13 @@
             margin-top: 10px;
         }
         
+        #clearHistoryBtn {
+            background-color: #607D8B;
+            color: white;
+            grid-column: span 2;
+            margin-top: 5px;
+        }
+        
         button:disabled {
             opacity: 0.6;
             filter: saturate(0.5);
@@ -168,6 +175,23 @@
             border-radius: 8px;
             font-size: clamp(0.9rem, 3.5vw, 1rem);
             text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .history-item-content {
+            flex: 1;
+        }
+        
+        .delete-history-btn {
+            background: none;
+            border: none;
+            color: #f44336;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin-left: 10px;
         }
         
         .finished {
@@ -186,7 +210,7 @@
             .buttons {
                 grid-template-columns: 1fr 1fr 1fr 1fr;
             }
-            #pauseBtn, #resetBtn, #exportBtn {
+            #pauseBtn, #resetBtn, #exportBtn, #clearHistoryBtn {
                 grid-column: span 1;
             }
         }
@@ -211,6 +235,7 @@
             <button id="pauseBtn" disabled>Pause</button>
             <button id="resetBtn">Reset</button>
             <button id="exportBtn">Export History</button>
+            <button id="clearHistoryBtn">Clear All</button>
         </div>
         
         <div class="history-container">
@@ -230,6 +255,7 @@
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
         const exportBtn = document.getElementById('exportBtn');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
         const progressBar = document.getElementById('progress');
         const historyList = document.getElementById('historyList');
         const historyCount = document.getElementById('historyCount');
@@ -452,15 +478,55 @@
             saveHistory();
         }
         
+        // Remove item from history
+        function removeHistoryItem(timestamp) {
+            historyEntries = historyEntries.filter(entry => entry.timestamp !== timestamp);
+            updateHistoryDisplay();
+            saveHistory();
+        }
+        
+        // Clear all history
+        function clearAllHistory() {
+            if (historyEntries.length === 0 || !confirm('Are you sure you want to clear all history?')) {
+                return;
+            }
+            historyEntries = [];
+            updateHistoryDisplay();
+            saveHistory();
+        }
+        
         // Update history display
         function updateHistoryDisplay() {
             historyList.innerHTML = '';
             historyCount.textContent = `${historyEntries.length} ${historyEntries.length === 1 ? 'session' : 'sessions'}`;
             
+            if (historyEntries.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'history-item';
+                emptyMsg.textContent = 'No history yet';
+                historyList.appendChild(emptyMsg);
+                return;
+            }
+            
             historyEntries.forEach(entry => {
                 const historyItem = document.createElement('div');
                 historyItem.className = 'history-item';
-                historyItem.textContent = `${entry.side} side: ${entry.duration} - ${entry.dateTime}`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'history-item-content';
+                contentDiv.textContent = `${entry.side} side: ${entry.duration} - ${entry.dateTime}`;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-history-btn';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.title = 'Delete this entry';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeHistoryItem(entry.timestamp);
+                });
+                
+                historyItem.appendChild(contentDiv);
+                historyItem.appendChild(deleteBtn);
                 historyList.appendChild(historyItem);
             });
         }
@@ -528,6 +594,7 @@
         pauseBtn.addEventListener('click', togglePause);
         resetBtn.addEventListener('click', resetTimer);
         exportBtn.addEventListener('click', exportHistory);
+        clearHistoryBtn.addEventListener('click', clearAllHistory);
         
         // Initialize the app
         init();
