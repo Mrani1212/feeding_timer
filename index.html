@@ -33,12 +33,23 @@
         .header {
             padding: 15px 0;
             flex-shrink: 0;
+            position: relative;
         }
         
         h1 {
             font-size: clamp(1.5rem, 6vw, 2rem);
             margin: 0;
             padding: 0 10px;
+        }
+        
+        .baby-tracker-link {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #2196F3;
+            text-decoration: none;
+            font-size: 0.9rem;
         }
         
         .main-content {
@@ -219,6 +230,7 @@
 <body>
     <div class="header">
         <h1>Breastfeeding Timer</h1>
+        <a href="baby_tracker.html" class="baby-tracker-link">Baby Tracker →</a>
     </div>
     
     <div class="main-content">
@@ -274,6 +286,7 @@
         let backgroundTimeLeft = 0;
         let notificationPermission = false;
         let serviceWorkerRegistration;
+        let timerCompleted = false; // Track if timer has naturally completed
 
         // Check for notification support
         const notificationSupported = 'Notification' in window;
@@ -348,7 +361,8 @@
             const progressPercentage = (currentTimeLeft / (15 * 60)) * 100;
             progressBar.style.width = `${progressPercentage}%`;
             
-            if (currentTimeLeft <= 0) {
+            if (currentTimeLeft <= 0 && !timerCompleted) {
+                timerCompleted = true;
                 clearInterval(timer);
                 body.classList.add('finished');
                 isActive = false;
@@ -372,6 +386,7 @@
         
         // Start timer for a specific side
         function startTimer(side) {
+            timerCompleted = false;
             if (isActive && currentSide === side) return;
             
             if (isActive && currentSide !== side) {
@@ -435,6 +450,12 @@
         
         // Reset timer to initial state
         function resetTimer() {
+            // Only add to history if timer was running and didn't naturally complete
+            if (isActive && !timerCompleted && currentSide && startTime) {
+                endTime = new Date();
+                addToHistory();
+            }
+            
             clearInterval(timer);
             timeLeft = 15 * 60;
             timerDisplay.textContent = formatTime(timeLeft);
@@ -444,14 +465,9 @@
             body.classList.remove('paused');
             isActive = false;
             isPaused = false;
+            timerCompleted = false;
             pauseBtn.textContent = 'Pause';
             pauseBtn.disabled = true;
-            
-            // If timer was running, record partial session
-            if (currentSide && startTime) {
-                endTime = new Date();
-                addToHistory();
-            }
             
             currentSide = '';
             
