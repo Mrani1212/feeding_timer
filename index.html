@@ -238,6 +238,8 @@
         let isActive = false;
         let isPaused = false;
         let historyEntries = [];
+        let backgroundStartTime = 0;
+        let backgroundTimeLeft = 0;
         
         // Format time as MM:SS
         function formatTime(seconds) {
@@ -248,11 +250,15 @@
         
         // Update timer display and progress bar
         function updateTimer() {
-            timerDisplay.textContent = formatTime(timeLeft);
-            const progressPercentage = (timeLeft / (15 * 60)) * 100;
+            const now = Date.now();
+            const elapsedSeconds = Math.floor((now - backgroundStartTime) / 1000);
+            const currentTimeLeft = Math.max(0, backgroundTimeLeft - elapsedSeconds);
+            
+            timerDisplay.textContent = formatTime(currentTimeLeft);
+            const progressPercentage = (currentTimeLeft / (15 * 60)) * 100;
             progressBar.style.width = `${progressPercentage}%`;
             
-            if (timeLeft <= 0) {
+            if (currentTimeLeft <= 0) {
                 clearInterval(timer);
                 body.classList.add('finished');
                 isActive = false;
@@ -262,9 +268,7 @@
                 pauseBtn.textContent = 'Pause';
             }
             
-            if (!isPaused && isActive) {
-                timeLeft--;
-            }
+            timeLeft = currentTimeLeft;
         }
         
         // Start timer for a specific side
@@ -287,6 +291,8 @@
             
             // Reset timer to 15 minutes
             timeLeft = 15 * 60;
+            backgroundTimeLeft = timeLeft;
+            backgroundStartTime = Date.now();
             timerDisplay.textContent = formatTime(timeLeft);
             progressBar.style.width = '100%';
             progressBar.style.backgroundColor = '#4CAF50';
@@ -299,6 +305,9 @@
             rightBtn.disabled = side === 'Right';
             pauseBtn.disabled = false;
             pauseBtn.textContent = 'Pause';
+            
+            // Request wake lock to prevent screen from turning off
+            requestWakeLock();
         }
         
         // Toggle pause state
@@ -310,11 +319,39 @@
             if (isPaused) {
                 body.classList.add('paused');
                 pauseBtn.textContent = 'Resume';
+                clearInterval(timer);
             } else {
                 body.classList.remove('paused');
                 pauseBtn.textContent = 'Pause';
+                backgroundStartTime = Date.now();
+                backgroundTimeLeft = timeLeft;
+                timer = setInterval(updateTimer, 1000);
+                requestWakeLock();
             }
         }
+        
+        // Request wake lock to prevent screen from turning off
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator && !isPaused) {
+                    const wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock was released');
+                    });
+                }
+            } catch (err) {
+                console.error('Error requesting wake lock:', err);
+            }
+        }
+        
+        // Handle visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isActive && !isPaused) {
+                backgroundStartTime = Date.now();
+                backgroundTimeLeft = timeLeft;
+                updateTimer();
+            }
+        });
         
         // Reset timer to initial state
         function resetTimer() {
