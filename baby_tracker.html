@@ -28,24 +28,33 @@
         }
         
         .header {
-            padding: 15px 0;
-            position: relative;
-            text-align: center;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 1px solid #333;
         }
         
-        h1 {
+        .header h1 {
             font-size: clamp(1.5rem, 6vw, 2rem);
             margin: 0;
+            flex: 1;
+            text-align: center;
         }
         
         .back-link {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
             color: #2196F3;
             text-decoration: none;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+        
+        .export-link {
+            color: #9C27B0;
+            text-decoration: none;
+            white-space: nowrap;
+            margin-left: 15px;
+            font-size: 0.9rem;
         }
         
         .tracker-container {
@@ -55,6 +64,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            -webkit-overflow-scrolling: touch;
         }
         
         .tracker-section {
@@ -81,6 +91,19 @@
             color: white;
         }
         
+        .timer-display {
+            font-size: 1.5rem;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .sleep-timer {
+            font-size: 1.5rem;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #FFC107;
+        }
+        
         .log-entry {
             background-color: #333;
             padding: 10px;
@@ -89,6 +112,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+        
+        .log-content {
+            flex: 1;
         }
         
         .log-time {
@@ -103,12 +130,7 @@
             font-size: 1.2rem;
             cursor: pointer;
             padding: 5px;
-        }
-        
-        .timer-display {
-            font-size: 1.5rem;
-            margin: 10px 0;
-            font-weight: bold;
+            margin-left: 10px;
         }
         
         select {
@@ -118,6 +140,25 @@
             background-color: #333;
             color: white;
             border: none;
+            font-size: 1rem;
+        }
+        
+        .export-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        @media (max-width: 400px) {
+            button {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
@@ -125,38 +166,51 @@
     <div class="header">
         <a href="index.html" class="back-link">← Back</a>
         <h1>Baby Tracker</h1>
+        <a href="#" id="exportData" class="export-link">Export</a>
     </div>
     
     <div class="tracker-container">
         <!-- Tummy Time Section -->
         <div class="tracker-section">
             <h2 class="section-title">Tummy Time</h2>
-            <div class="timer-display" id="tummyTimer">00:00</div>
-            <button id="startTummy">Start</button>
-            <button id="stopTummy" disabled>Stop</button>
-            <button id="logTummy">Log Session</button>
+            <div class="timer-display" id="tummyTimer">00:00:00</div>
+            <div class="button-group">
+                <button id="startTummy">Start</button>
+                <button id="stopTummy" disabled>Stop</button>
+                <button id="logTummy">Log</button>
+            </div>
             <div id="tummyLogs"></div>
         </div>
         
         <!-- Sleep/Nap Section -->
         <div class="tracker-section">
             <h2 class="section-title">Sleep/Nap Time</h2>
-            <button id="startSleep">Start Sleep</button>
-            <button id="stopSleep" disabled>End Sleep</button>
-            <select id="sleepType">
-                <option value="nap">Nap</option>
-                <option value="night">Night Sleep</option>
-            </select>
+            <div class="sleep-timer" id="sleepTimer">00:00:00</div>
+            <div class="button-group">
+                <button id="startSleep">Start</button>
+                <button id="stopSleep" disabled>End</button>
+                <select id="sleepType">
+                    <option value="nap">Nap</option>
+                    <option value="night">Night Sleep</option>
+                </select>
+            </div>
             <div id="sleepLogs"></div>
         </div>
         
         <!-- Diaper Change Section -->
         <div class="tracker-section">
             <h2 class="section-title">Diaper Changes</h2>
-            <button id="logWet">Wet</button>
-            <button id="logDirty">Dirty</button>
-            <button id="logMixed">Mixed</button>
+            <div class="button-group">
+                <button id="logWet">Wet</button>
+                <button id="logDirty">Dirty</button>
+                <button id="logMixed">Mixed</button>
+            </div>
             <div id="diaperLogs"></div>
+        </div>
+        
+        <!-- Export Section -->
+        <div class="export-section">
+            <button id="exportAllData">Export All Data</button>
         </div>
     </div>
 
@@ -168,6 +222,7 @@
         const logTummyBtn = document.getElementById('logTummy');
         const tummyLogs = document.getElementById('tummyLogs');
         
+        const sleepTimer = document.getElementById('sleepTimer');
         const startSleepBtn = document.getElementById('startSleep');
         const stopSleepBtn = document.getElementById('stopSleep');
         const sleepTypeSelect = document.getElementById('sleepType');
@@ -177,6 +232,9 @@
         const logDirtyBtn = document.getElementById('logDirty');
         const logMixedBtn = document.getElementById('logMixed');
         const diaperLogs = document.getElementById('diaperLogs');
+        
+        const exportDataBtn = document.getElementById('exportData');
+        const exportAllDataBtn = document.getElementById('exportAllData');
         
         // State variables
         let tummyTimeStart = 0;
@@ -224,6 +282,8 @@
         }
         
         function logTummyTime() {
+            if (tummyTimeSeconds === 0) return;
+            
             const entry = {
                 duration: tummyTimeSeconds,
                 timestamp: Date.now()
@@ -256,7 +316,9 @@
                 logEntry.className = 'log-entry';
                 
                 const content = document.createElement('div');
-                content.innerHTML = `<strong>${formatTime(entry.duration)}</strong> <span class="log-time">${formatDateTime(new Date(entry.timestamp))}</span>`;
+                content.className = 'log-content';
+                content.innerHTML = `<div><strong>${formatTime(entry.duration)}</strong></div>
+                                    <div class="log-time">${formatDateTime(new Date(entry.timestamp))}</div>`;
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
@@ -277,8 +339,10 @@
         function startSleepTracking() {
             sleepStartTime = Date.now();
             sleepSeconds = 0;
+            sleepTimer.textContent = formatTime(sleepSeconds);
             sleepInterval = setInterval(() => {
                 sleepSeconds = Math.floor((Date.now() - sleepStartTime) / 1000);
+                sleepTimer.textContent = formatTime(sleepSeconds);
             }, 1000);
             
             startSleepBtn.disabled = true;
@@ -301,6 +365,7 @@
             
             startSleepBtn.disabled = false;
             stopSleepBtn.disabled = true;
+            sleepTimer.textContent = "00:00:00";
         }
         
         function updateSleepLogs() {
@@ -317,8 +382,9 @@
                 
                 const type = entry.type === 'nap' ? 'Nap' : 'Night Sleep';
                 const content = document.createElement('div');
-                content.innerHTML = `<strong>${type}: ${formatTime(entry.duration)}</strong><br>
-                                    <span class="log-time">${formatDateTime(new Date(entry.startTime))} to ${formatDateTime(new Date(entry.endTime))}</span>`;
+                content.className = 'log-content';
+                content.innerHTML = `<div><strong>${type}: ${formatTime(entry.duration)}</strong></div>
+                                    <div class="log-time">${formatDateTime(new Date(entry.startTime))} to ${formatDateTime(new Date(entry.endTime))}</div>`;
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
@@ -366,7 +432,9 @@
                 };
                 
                 const content = document.createElement('div');
-                content.innerHTML = `<strong>${typeMap[entry.type]}</strong> <span class="log-time">${formatDateTime(new Date(entry.timestamp))}</span>`;
+                content.className = 'log-content';
+                content.innerHTML = `<div><strong>${typeMap[entry.type]}</strong></div>
+                                    <div class="log-time">${formatDateTime(new Date(entry.timestamp))}</div>`;
                 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn';
@@ -383,12 +451,64 @@
             });
         }
         
+        // Export functions
+        function exportToCSV() {
+            let csvContent = "Category,Type,Duration,Start Time,End Time\n";
+            
+            // Tummy Time entries
+            tummyEntries.forEach(entry => {
+                csvContent += `Tummy Time,,${formatTime(entry.duration)},,${formatDateTime(new Date(entry.timestamp))}\n`;
+            });
+            
+            // Sleep entries
+            sleepEntries.forEach(entry => {
+                const type = entry.type === 'nap' ? 'Nap' : 'Night Sleep';
+                csvContent += `Sleep,${type},${formatTime(entry.duration)},${formatDateTime(new Date(entry.startTime))},${formatDateTime(new Date(entry.endTime))}\n`;
+            });
+            
+            // Diaper entries
+            diaperEntries.forEach(entry => {
+                const typeMap = { 'wet': 'Wet', 'dirty': 'Dirty', 'mixed': 'Mixed' };
+                csvContent += `Diaper,${typeMap[entry.type]},,,${formatDateTime(new Date(entry.timestamp))}\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `baby_tracker_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function exportAllData() {
+            const data = {
+                tummyTime: tummyEntries,
+                sleep: sleepEntries,
+                diaper: diaperEntries,
+                exportedAt: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `baby_tracker_full_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
         // Data persistence
         function saveData() {
             const data = {
                 tummyEntries,
                 sleepEntries,
-                diaperEntries
+                diaperEntries,
+                lastUpdated: Date.now()
             };
             localStorage.setItem('babyTrackerData', JSON.stringify(data));
         }
@@ -418,6 +538,9 @@
         logWetBtn.addEventListener('click', () => logDiaper('wet'));
         logDirtyBtn.addEventListener('click', () => logDiaper('dirty'));
         logMixedBtn.addEventListener('click', () => logDiaper('mixed'));
+        
+        exportDataBtn.addEventListener('click', exportToCSV);
+        exportAllDataBtn.addEventListener('click', exportAllData);
         
         // Initialize
         loadData();
