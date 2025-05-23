@@ -45,6 +45,10 @@
             text-align: center;
         }
         
+        #h1 {
+            text-align: start;
+        }
+
         .baby-tracker-link {
             color: #2196F3;
             text-decoration: none;
@@ -98,6 +102,24 @@
             flex-shrink: 0;
         }
         
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+            flex-shrink: 0;
+        }
+        
+        .history-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+            flex-shrink: 0;
+            margin-top:  10px;
+            margin-bottom: 8px;
+        }
+        
         button {
             padding: 20px 10px;
             font-size: clamp(1.1rem, 4vw, 1.3rem);
@@ -125,32 +147,26 @@
             color: white;
         }
         
-        /* commented out some code here might revert back to it */
+       
 
         #pauseBtn {
             background-color: #FFC107;
             color: black;
-            /* grid-column: span 3; */
         }
         
         #resetBtn {
             background-color: #f44336;
             color: white;
-            /* grid-column: span 3; */
         }
         
         #exportBtn {
             background-color: #9C27B0;
             color: white;
-            /* grid-column: span 3; */
-            /* margin-top: 10px; */
         }
         
         #clearHistoryBtn {
             background-color: #607D8B;
             color: white;
-            grid-column: span 3;
-            margin-top: 5px;
         }
         
         button:disabled {
@@ -227,17 +243,20 @@
         
         @media (min-width: 500px) {
             .buttons {
-                grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+                grid-template-columns: 1fr 1fr 1fr;
             }
-            #pauseBtn, #resetBtn, #exportBtn, #clearHistoryBtn {
-                grid-column: span 1;
+            .action-buttons {
+                grid-template-columns: 1fr 1fr;
+            }
+            .history-buttons {
+                grid-template-columns: 1fr 1fr;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Feeding Timer</h1>
+        <h1 id="h1">Feeding Timer</h1>
         <a href="baby_tracker.html" class="baby-tracker-link">Baby Tracker</a>
     </div>
     
@@ -253,8 +272,14 @@
             <button id="leftBtn">Left</button>
             <button id="bottleBtn">Bottle</button>
             <button id="rightBtn">Right</button>
+        </div>
+        
+        <div class="action-buttons">
             <button id="pauseBtn" disabled>Pause</button>
             <button id="resetBtn">Reset</button>
+        </div>
+        
+        <div class="history-buttons">
             <button id="exportBtn">Export</button>
             <button id="clearHistoryBtn">Clear All</button>
         </div>
